@@ -1,3 +1,7 @@
+'''
+	script to extract data from finviz.com
+'''
+
 from bs4 import BeautifulSoup
 import re
 import sqlite3
@@ -26,13 +30,14 @@ cursor.execute("""
 conn.commit()
 
 def get_table_headers():
-	url = "http://www.finviz.com/screener.ashx?v=111&f=cap_nano&r=1"
+	url = "http://finviz.com/screener.ashx?v=111&f=cap_nano,sec_healthcare&r=1"
 	content = urllib.request.urlopen(url).read()
 	soup = BeautifulSoup(content)
 	table_headers = []
 	for th in soup.select(".table-top"):
 		table_headers.append(th.get_text().replace(".", ""))
-	table_headers.insert(1, "Ticker")
+	ticker = soup.select(".table-top-s")
+	table_headers.insert(1, ticker[0].get_text())
 	return table_headers
 
 
@@ -55,7 +60,7 @@ def get_data():
 	mysite = 'www.imdavemorrison.com'
 	initial_number = 1
 	while mysite == 'www.imdavemorrison.com':
-		url = "http://www.finviz.com/screener.ashx?v=111&f=cap_nano&r={}".format(
+		url = "http://www.finviz.com/screener.ashx?v=111&f=cap_nano,sec_healthcare&r={}".format(
 			initial_number
 		)
 		content = urllib.request.urlopen(url).read()

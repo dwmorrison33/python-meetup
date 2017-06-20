@@ -1,6 +1,6 @@
 '''
-    City to collect data from: Sacramento, CA
-    https://aca.accela.com/sacramento/Default.aspx
+    City to collect data from: Tampa FL
+    url = https://aca.tampagov.net/CitizenAccess/
 '''
 
 import requests
@@ -22,17 +22,15 @@ from selenium.webdriver.support import expected_conditions as EC
 
 conn = sqlite3.connect("python_meetup.sqlite")
 cur = conn.cursor()
-table_name = "python_meetup_table_number_two"
-
+table_name = "python_meetup_table"
 cur.execute("DROP TABLE IF EXISTS " + table_name)
 cur.execute("""CREATE TABLE {} (
-            date_issued varchar(255),
-            permit_number varchar(255),
-            permit_type varchar(255),
-            description varchar(1555),
-            address varchar(255),
+            permit_no varchar(255),
             status varchar(255),
-            time_added_to_db varchar(100)
+            address varchar(255),
+            description varchar(1555),
+            valuation varchar(255),
+            parcel varchar(1255)
         );
     """.format(table_name))
 
@@ -42,13 +40,12 @@ def init_driver():
     return driver
 
 def scrape(driver, search_term, start_date, end_date):
-    initial_url = 'https://aca.accela.com/sacramento/Default.aspx'
+    initial_url = 'https://aca.tampagov.net/CitizenAccess' + \
+                  '/Cap/CapHome.aspx?module=Building&TabName=Building'
     driver.get(initial_url)
     time.sleep(random.random() * 5)
-    driver.switch_to.default_content()
-    driver.switch_to_frame("ACAFrame")
-    CLICK_BUILDING = 'ctl00_PlaceHolderMain_TabDataList_TabsDataList_ctl00_LinksDataList_ctl00_LinkItemUrl'
-    driver.wait.until(EC.element_to_be_clickable((By.ID, CLICK_BUILDING))).click()
+    SELECT_PERMIT = 'ctl00$PlaceHolderMain$generalSearchForm$ddlGSPermitType'
+    driver.wait.until(EC.element_to_be_clickable((By.XPATH, "//select[@name='{}']/option[text()='{}']".format(SELECT_PERMIT,search_term)))).click()
     time.sleep(random.random() * 5)
     START_DATE = 'ctl00$PlaceHolderMain$generalSearchForm$txtGSStartDate'
     driver.wait.until(EC.element_to_be_clickable((By.NAME, START_DATE))).send_keys("{}".format(start_date))
@@ -56,58 +53,74 @@ def scrape(driver, search_term, start_date, end_date):
     END_DATE = 'ctl00$PlaceHolderMain$generalSearchForm$txtGSEndDate'
     driver.wait.until(EC.element_to_be_clickable((By.NAME, END_DATE))).send_keys("{}".format(end_date))
     time.sleep(random.random() * 5)
-    PROJECT_NAME = 'ctl00$PlaceHolderMain$generalSearchForm$txtGSProjectName'
-    driver.wait.until(EC.element_to_be_clickable((By.NAME, PROJECT_NAME))).send_keys("{}".format(search_term))
-    time.sleep(random.random() * 5)
     CLICK_BUTTON = 'ctl00_PlaceHolderMain_btnNewSearch'
     driver.wait.until(EC.element_to_be_clickable((By.ID, CLICK_BUTTON))).click()
     time.sleep(10)
 
-    pageno = 2
     while True:
-        #extract data
-        values = []
+        #extract links and scrape data
         soup = BeautifulSoup(driver.page_source, "html.parser")
-        even_rows = soup.find_all("tr", class_="ACA_TabRow_Even ACA_TabRow_Even_FontSize")
-        for row in even_rows:
-            td = row.find_all('td')
-            value = [t.get_text().replace("\n", "").replace("'", "")  for t in td]
-            values.append(value)
-        odd_rows = soup.find_all("tr", class_="ACA_TabRow_Odd ACA_TabRow_Odd_FontSize")
-        for row in odd_rows:
-            td = row.find_all('td')
-            value = [t.get_text().replace("\n", "").replace("'", "") for t in td]
-            values.append(value)
-        #insert into db
-        for value in values:
-            if value:
-                # date_issued [1], permit_number [2], status [3], 
-                # permit_type [4], address [6], description [7]
-                date_issued = value[1]
-                permit_number = value[2]
-                permit_type = value[3]
-                description = value[4]
-                address = value[5]
-                status = value[6]
-                print("date: " + date_issued)
-                print("status: " + status)
-                print("permit no: " + permit_number)
-                print("permit type: " + permit_type)
-                print("address: " + address)
-                print("desc: " + description)           
-                print("-" * 150)
-                cur.execute("""INSERT INTO {0} VALUES('{1}','{2}','{3}','{4}','{5}','{6}','{7}');
-                """.format(
-                        table_name,
-                        date_issued,
-                        permit_number,
-                        permit_type,
-                        description,
-                        address,
-                        status,
-                        time.ctime(),
-                ))
-                conn.commit()
+        for a in soup.find_all('a', href=True):
+            url = 'https://aca.tampagov.net' + a['href']
+            # pattern in urls that have data that we need
+            # is Cap/CapDetail, so lets search for that in urls
+            if 'Cap/CapDetail' in url:
+                response = requests.get(url)
+                soup = BeautifulSoup(response.text)
+                span = soup.find_all('span')
+                span = [" ".join(s.get_text().split()).replace("'", " ").replace("\n", "") for s in span]
+                try:
+                    permit_no = [span[i+1] 
+                                     for i, x in enumerate(span)
+                                     if 'Record' in x][0]
+                    if not permit_no:
+                        permit_no = ""
+                    status = [span[i+1]
+                              for i, x in enumerate(span)
+                              if 'Record Status:' in x][1]
+                    if not status:
+                        status = ""
+                    address = [span[i+4].replace(" T ", " Tampa, FL ")
+                               for i, x in enumerate(span)
+                               if 'Work Location' in x][1]
+                    if not address:
+                        address = ""
+                    description = [span[i+1]
+                                   for i, x in enumerate(span)
+                                   if 'Project Description:' in x][0]
+                    if not description:
+                        description = ""
+                    valuation = [span[i+1]
+                                 for i, x in enumerate(span)
+                                 if 'Job Value:' in x][1]
+                    if not valuation:
+                        valuation = ""
+                    parcel = [x.replace("Parcel Information Parcel Number:", "")
+                                    for x in span
+                                    if 'Parcel Information Parcel Number:' in x][0]
+                    if not parcel:
+                        parcel = ""
+                    #insert values into db
+                    print("Permit Number: " + permit_no)
+                    print("address: " + address)
+                    print("status: " + status)
+                    print("description: " + description)
+                    print("parcel: " + parcel[0:21])
+                    print("-" * 100)
+                    cur.execute("""INSERT INTO {0}
+                                    VALUES('{1}','{2}','{3}','{4}','{5}','{6}');
+                                    """.format(
+                                            table_name,
+                                            permit_no,
+                                            status,
+                                            address,
+                                            description,
+                                            valuation,
+                                            parcel[0:21],
+                    ))
+                    conn.commit()
+                except:
+                    pass
 
         #iterate over all pages by clicking the next button
         try:
@@ -116,19 +129,13 @@ def scrape(driver, search_term, start_date, end_date):
             our_exception = "An exception of type {0} occured."
             message = our_exception.format(type(ex).__name__)
             print(message)
+            break
         next_page.click()
-        def next_page(driver):
-            located_element = driver.find_element_by_xpath("//span[text()='{}']".format(pageno)).get_attribute('class')
-            return 'SelectedPageButton font11px' in located_element
-        wait = WebDriverWait(driver, 30)
-        wait.until(next_page)
-        pageno += 1
 
 if __name__ == "__main__":
     driver = init_driver()
     scrape = scrape(driver,
-                   'solar', 
-                   '01/01/2001',
+                   'Residential Roof Trade Permit', 
+                   '01/25/2017',
                    '04/04/2017')
     driver.quit()
-
