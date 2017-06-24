@@ -10,7 +10,7 @@ from pprint import pprint
 
 conn = sqlite3.connect("python_meetup.sqlite")
 cursor = conn.cursor()
-table_name = "market_cap"
+table_name = "finviz_data"
 cursor.execute("DROP TABLE IF EXISTS " + table_name)
 cursor.execute("""
 	CREATE TABLE {} (
@@ -32,21 +32,25 @@ conn.commit()
 def get_table_headers():
 	url = "http://finviz.com/screener.ashx?v=111&f=cap_nano,sec_healthcare&r=1"
 	content = urllib.request.urlopen(url).read()
-	soup = BeautifulSoup(content)
+	soup = BeautifulSoup(content, "html.parser")
 	table_headers = []
 	for th in soup.select(".table-top"):
 		table_headers.append(th.get_text().replace(".", ""))
+	# if you're worried about Big O Notation, use list comprehension
+	#table_headers = [th.get_text().replace(".", "") for th in soup.select(".table-top")]
 	ticker = soup.select(".table-top-s")
 	table_headers.insert(1, ticker[0].get_text())
+	pprint(table_headers)
 	return table_headers
 
+#table_headers = get_table_headers()
 
 def get_rows_from_soup(soup, table_headers):
 	table_row_data = []
 	count = 0
 	row_data = {}
-	for tr in soup.select(".screener-body-table-nw"):
-		row_data[table_headers[count]] = tr.get_text()
+	for td in soup.select(".screener-body-table-nw"):
+		row_data[table_headers[count]] = td.get_text()
 		count += 1
 		if count >= len(table_headers):
 			count = 0
@@ -64,7 +68,7 @@ def get_data():
 			initial_number
 		)
 		content = urllib.request.urlopen(url).read()
-		soup = BeautifulSoup(content)
+		soup = BeautifulSoup(content, "html.parser")
 		data = get_rows_from_soup(soup, headers)
 		for row in data:
 			print(row['No'])
@@ -79,7 +83,7 @@ def get_data():
 			print(row['Change'][:-1])
 			print(row['Volume'].replace(',', ""))
 			print("-" * 100)
-			cursor.execute('INSERT INTO market_cap VALUES(?,?,?,?,?,?,?,?,?,?,?)',(
+			cursor.execute('INSERT INTO finviz_data VALUES(?,?,?,?,?,?,?,?,?,?,?)',(
 					row['No'],
 					row['Ticker'],
 					row['Company'],
@@ -92,10 +96,10 @@ def get_data():
 					row['Change'][:-1],
 					row['Volume'].replace(',', ""),
 				))
-			conn.commit()			
+		conn.commit()			
 		initial_number += 20
 		if not re.findall(b"<b>next</b>", content):
 			mysite = 'imdavemorrison'
 
-get_data()
+data = get_data()
 

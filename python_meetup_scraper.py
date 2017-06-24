@@ -22,7 +22,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 conn = sqlite3.connect("python_meetup.sqlite")
 cur = conn.cursor()
-table_name = "python_meetup_table_number_two"
+table_name = "python_meetup_table"
 
 cur.execute("DROP TABLE IF EXISTS " + table_name)
 cur.execute("""CREATE TABLE {} (
@@ -43,7 +43,7 @@ def init_driver():
 def scrape(driver, search_term, start_date, end_date):
     initial_url = 'https://aca.accela.com/sacramento/Default.aspx'
     driver.get(initial_url)
-    time.sleep(random.random() * 5)
+    time.sleep(random.random() * 10)
     driver.switch_to.default_content()
     driver.switch_to_frame("ACAFrame")
     CLICK_BUILDING = 'ctl00_PlaceHolderMain_TabDataList_TabsDataList_ctl00_LinksDataList_ctl00_LinkItemUrl'
@@ -72,7 +72,7 @@ def scrape(driver, search_term, start_date, end_date):
             value = [t.get_text().replace("\n", "").replace("'", "")  for t in td]
             if value:
                 # instead of just inserting into table with index,  
-                # lets define them with a variable
+                # lets assign them to a variable, and then insert into db
                 date = value[1]
                 permit_no = value[2]
                 record_type = value[3]
@@ -103,7 +103,7 @@ def scrape(driver, search_term, start_date, end_date):
             value = [t.get_text().replace("\n", "").replace("'", "") for t in td]
             if value:
                 # instead of just inserting into table with index,  
-                # lets define them with a variable
+                # lets assign them to a variable
                 date = value[1]
                 permit_no = value[2]
                 record_type = value[3]
@@ -131,13 +131,13 @@ def scrape(driver, search_term, start_date, end_date):
         
         #iterate over all pages by clicking the next button
         try:
-            next_page = driver.wait.until(EC.element_to_be_clickable((By.XPATH, "//a[text()='{}']".format('Next >'))))
+            next_page_element = driver.wait.until(EC.element_to_be_clickable((By.XPATH, "//a[text()='{}']".format('Next >'))))
         except Exception as ex:
             our_exception = "An exception of type {0} occured."
             message = our_exception.format(type(ex).__name__)
             print(message)
             break
-        next_page.click()
+        next_page_element.click()
         def next_page(driver):
             located_element = driver.find_element_by_xpath("//span[text()='{}']".format(pageno)).get_attribute('class')
             return 'SelectedPageButton font11px' in located_element
