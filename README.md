@@ -11,7 +11,7 @@ You will need that path for the scripts that we execute.
 6. Next activate your virtual environment, type source myvirtualenv/python_meetup/bin/activate
 
 7. You will want to clone this project to whatever directory of your choice. To keep things simple, I recommend your desktop.
-8. cd into project and install the necessary packages with pip -R install requirements.txt
+8. cd into project and install the necessary packages with pip -r install requirements.txt
 
 9. Lastly, you will need to change the directory in python_meetup_scraper.py, python_meetup_scraper2.py, and selenium_test_scraper.py
 from driver = webdriver.Chrome("/Users/davidmorrison/Downloads/chromedriver") to where you downloaded the chromedriver in step 3.
