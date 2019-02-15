@@ -1,7 +1,7 @@
 1. I recommend that you download Python3 and Google Chrome for this Meetup https://www.google.com/chrome/browser/desktop/index.html
 
 2. You will need the chromedriver for Selenium to work properly..Download at https://chromedriver.storage.googleapis.com/index.html?path=2.30/
-Please download the correct .zip file for the operationg system that you have...
+Please download the correct .zip file for the operating system that you have...
 
 3. You will need to unzip that file in your download folder...Once you have done this, please make note of your directory with the command pwd
 You will need that path for the scripts that we execute.
